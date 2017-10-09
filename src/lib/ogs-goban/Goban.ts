@@ -36,9 +36,11 @@ const SCORE_ESTIMATION_TOLERANCE = 0.30;
 const AUTOSCORE_TRIALS = 1000;
 const AUTOSCORE_TOLERANCE = 0.30;
 
+const STONE_SPACING_SCALE = 0.976; // Factor by which stone size is reduced to leave a gap when touching
+
 /* Note that this could be set by a user preference if necessary - '0' means "no nudging stones". */
-const NUDGE_PERCENT = 10;  // percent of stone radius to randomly nudge stones (and also to shrink them to make space)
-const NUDGE_SCALE = (100 - NUDGE_PERCENT) / 100;
+const NUDGE_PERCENT = 8;  // percent of stone radius to use for randomly nudging stones
+const NUDGE_SCALE = (100 - NUDGE_PERCENT) / 100;  // how much to scale things down due to make room for nudging
 
 let __theme_cache = {"black": {}, "white": {}};
 let last_goban_id = 0;
@@ -2327,23 +2329,61 @@ export abstract class Goban extends TypedEventEmitter<Events> {
                     ctx.save();
                     let shadow_ctx = this.shadow_ctx;
                     if (!stone_color || transparent) {
+                        /* We're drawing a hover stone, or something similar, not a real stone.  Don't nudge it and don't nudge letters, marks in this square yet... */
                         ctx.globalAlpha = 0.6;
                         shadow_ctx = null;
                     }
                     else {
                         /* It's a real stone, so nudge it, for realism of display */
 
-                        let nudge_amount = (NUDGE_PERCENT / 100) * this.theme_stone_radius;
-
                         let x_nudge = 0;
                         let y_nudge = 0;
 
                         if (!this.stone_offsets[i][j]) {
-                            /* we didn't nudge it yet, so do so now... */
-                            x_nudge = nudge_amount * 2 * (Math.random() - 0.5);
-                            y_nudge = nudge_amount  * 2 * (Math.random() - 0.5);
+
+                            /* The space allowed for nudging stones ... */
+                            let nudge_space = (NUDGE_PERCENT / 100) * this.theme_stone_radius / NUDGE_SCALE; // note that radius was already scaled
+
+                            x_nudge = nudge_space * (2 * (Math.random() - 0.5));
+                            y_nudge = nudge_space * (2 * (Math.random() - 0.5));
 
                             this.stone_offsets[i][j] = {x: x_nudge, y: y_nudge};
+
+                            /* make sure we don't bump into nudged neighbors (move them out the way, back towards the centre of their own square) */
+
+                           if (this.stone_offsets[i][j - 1]) {
+                                let neighbor_x_nudge = this.stone_offsets[i][j - 1].x;
+                                let total_nudge_space_occupation = -1 * x_nudge + neighbor_x_nudge;
+                                if (total_nudge_space_occupation > 2 * nudge_space) {
+                                    this.stone_offsets[i][j - 1].x = 2 * nudge_space - (-1 * x_nudge);
+                                    this.__drawSquare(i, j - 1);
+                                }
+                            }
+                            if (this.stone_offsets[i][j + 1]) {
+                                let neighbor_x_nudge = this.stone_offsets[i][j + 1].x;
+                                let total_nudge_space_occupation = x_nudge + (-1 * neighbor_x_nudge);
+                                if (total_nudge_space_occupation > 2 * nudge_space) {
+                                    this.stone_offsets[i][j + 1].x = 2 * nudge_space - x_nudge;
+                                    this.__drawSquare(i, j + 1);
+                                }
+                            }
+                            if (this.stone_offsets[i - 1][j]) {
+                                let neighbor_y_nudge = this.stone_offsets[i - 1][j].y;
+                                let total_nudge_space_occupation = -1 * y_nudge + neighbor_y_nudge;
+                                if (total_nudge_space_occupation > 2 * nudge_space) {
+                                    this.stone_offsets[i - 1][j].y = 2 * nudge_space - (-1 * y_nudge);
+                                    this.__drawSquare(i - 1, j);
+                                }
+                            }
+                            if (this.stone_offsets[i + 1][j]) {
+                                let neighbor_y_nudge = this.stone_offsets[i + 1][j].y;
+                                let total_nudge_space_occupation = y_nudge + (-1 * neighbor_y_nudge);
+                                if (total_nudge_space_occupation > 2 * nudge_space) {
+                                    this.stone_offsets[i + 1][j].y = 2 * nudge_space - y_nudge;
+                                    this.__drawSquare(i + 1, j);
+                                }
+                            }
+
                         }
                         else {
                             x_nudge = this.stone_offsets[i][j].x;
@@ -2352,6 +2392,8 @@ export abstract class Goban extends TypedEventEmitter<Events> {
 
                         nx = nx + x_nudge;
                         ny = ny + y_nudge;
+
+                        /* Note that letters and marks on this stone will be displaced by this amount as well.... */
                     }
                     if (color === 1) {
                         let stone = this.theme_black_stones[((i + 1) * 53) * ((j + 1) * 97) % this.theme_black_stones.length];
@@ -3101,7 +3143,7 @@ export abstract class Goban extends TypedEventEmitter<Events> {
 
     private computeThemeStoneRadius(metrics) {{{
         // Scale proportionally in general
-        let r = this.square_size * 0.488 * NUDGE_SCALE;
+        let r = this.square_size / 2 * STONE_SPACING_SCALE * NUDGE_SCALE;
 
         // Prevent pixel sharing in low-res
         if (this.square_size % 2 === 0) {
