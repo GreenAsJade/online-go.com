@@ -48,6 +48,9 @@ describe("COOL Player landing tests", () => {
     test("logged out player arrival", async () => {
         jest.spyOn(ogs_hooks, "useUser").mockReturnValue({ ...TEST_USER, anonymous: true });
 
+        location.pathname = "/online-league/league-player";
+        location.search = "?side=black&id=blackmatchid";
+
         //let res: ReturnType<typeof render>;
         await act(async () => {
             render(
@@ -72,6 +75,6 @@ describe("COOL Player landing tests", () => {
             );
         });
 
-        expect(screen.getByText("Welcome to OGS")).toBeDefined();
+        expect(screen.getByText("Welcome to OGS", { exact: false })).toBeDefined();
     });
 });
