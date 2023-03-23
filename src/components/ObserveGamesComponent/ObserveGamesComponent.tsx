@@ -389,7 +389,7 @@ export class ObserveGamesComponent extends React.PureComponent<
                 <GameList
                     list={this.state.game_list}
                     disableSort={true}
-                    emptyMessage={_("No games being played")}
+                    emptyMessage={_("No games being played at all")}
                     miniGobanProps={this.props.miniGobanProps}
                     namesByGobans={this.props.namesByGobans}
                     forceList={this.state.force_list}
