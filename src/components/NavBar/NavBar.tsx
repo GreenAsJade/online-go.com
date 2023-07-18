@@ -22,7 +22,7 @@ import * as DynamicHelp from "react-dynamic-help";
 
 import * as data from "data";
 
-import { _ } from "translate";
+import { _, pgettext } from "translate";
 import { PlayerIcon } from "PlayerIcon";
 import { LineText } from "misc-ui";
 import { createDemoBoard } from "ChallengeModal";
@@ -38,7 +38,7 @@ import { FriendIndicator } from "FriendList";
 import { ChatIndicator } from "Chat";
 
 import { logout } from "auth";
-import { useUser } from "hooks";
+import { useUser, useData } from "hooks";
 import { OmniSearch } from "./OmniSearch";
 
 const body = $(document.body);
@@ -80,6 +80,7 @@ export function NavBar(): JSX.Element {
     const [hamburger_expanded, setHamburgerExpanded] = React.useState(false);
     const search_input = React.useRef<HTMLInputElement>(null);
     const [force_nav_close, setForceNavClose] = React.useState(false);
+    const [banned_user_id] = useData("appeals.banned_user_id");
 
     const { registerTargetItem } = React.useContext(DynamicHelp.Api);
 
@@ -152,6 +153,8 @@ export function NavBar(): JSX.Element {
         !window.location.pathname.includes("/welcome") && // a challenge link page is being shown
         !window.location.hash.includes("/welcome"); // the signin with redirect to challenge accept
 
+    const show_appeal_box = !window.location.pathname.includes("/appeal");
+
     return (
         <header
             className={
@@ -161,6 +164,8 @@ export function NavBar(): JSX.Element {
             }
         >
             <KBShortcut shortcut="`" action={() => search_input.current.focus()} />
+
+            {banned_user_id && show_appeal_box ? <BanIndicator /> : null}
 
             <span className="hamburger">
                 {hamburger_expanded ? (
@@ -252,14 +257,18 @@ export function NavBar(): JSX.Element {
                         <i className="fa fa-sitemap"></i>
                         {_("Joseki")}
                     </Link>
-                    <span className="fakelink" onClick={newDemo}>
-                        <i className="fa fa-plus"></i>
-                        {_("Demo Board")}
-                    </span>
-                    <Link to={`/library/${user.id}`}>
-                        <i className="fa fa-book"></i>
-                        {_("SGF Library")}
-                    </Link>
+                    {user.anonymous ? null : (
+                        <span className="fakelink" onClick={newDemo}>
+                            <i className="fa fa-plus"></i>
+                            {_("Demo Board")}
+                        </span>
+                    )}
+                    {user.anonymous ? null : (
+                        <Link to={`/library/${user.id}`}>
+                            <i className="fa fa-book"></i>
+                            {_("SGF Library")}
+                        </Link>
+                    )}
 
                     <Link to={`/rating-calculator`}>
                         <i className="fa fa-calculator"></i>
@@ -476,5 +485,18 @@ function ProfileAndQuickSettingsBits({ settingsNavLink }: { settingsNavLink: any
                 <GobanThemePicker />
             </div>
         </>
+    );
+}
+
+function BanIndicator(): JSX.Element {
+    return (
+        <div className="BanIndicator">
+            <h3>{_("Your account has been suspended")}</h3>
+            <div>
+                <Link to="/appeal">
+                    {pgettext("Link for banned player to use to appeal their ban", "Appeal here")}
+                </Link>
+            </div>
+        </div>
     );
 }

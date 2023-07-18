@@ -54,11 +54,13 @@ export const cached = {
                         data.set("appeals.banned_user_id", config.banned.banned_user_id);
                         data.set("appeals.jwt", config.banned.jwt);
                         data.set("appeals.ban-reason", config.banned.ban_reason);
+                        /*
                         if (window.location.pathname !== "/appeal") {
                             window.location.pathname = "/appeal";
                         }
+                        */
                         return;
-                    } else if ("banned" in config && !config.banned) {
+                    } else if (!config.user?.anonymous) {
                         data.remove("appeals.banned_user_id");
                         data.remove("appeals.jwt");
                         data.remove("appeals.ban-reason");

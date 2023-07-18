@@ -56,9 +56,10 @@ export function Appeal(props: { player_id?: number }): JSX.Element {
     const [reason_for_ban, setReasonForBan] = React.useState(null);
     const [ban_expiration, setBanExpiration] = React.useState(null);
     const [still_banned, setStillBanned] = React.useState(true);
+    const [allow_further_appeals, setAllowFurtherAppeals] = React.useState(true);
 
     const ban_reason: string = reason_for_ban || data.get("appeals.ban-reason");
-    React.useEffect(refresh, []);
+    React.useEffect(refresh, [props.player_id]);
 
     if (!user.is_moderator && !jwt_key) {
         window.location.pathname = "/sign-in";
@@ -69,8 +70,8 @@ export function Appeal(props: { player_id?: number }): JSX.Element {
     const placeholder = mod
         ? "You can respond to the user's appeal here. Click 'hidden' for the reponse to only be visible to other moderators."
         : pgettext(
-              "This text is shown when a user needs to appeal a ban from the site.",
-              "If you would like to appeal this ban, please enter your appeal here and it will be reviewed by a moderator. Second chances are sometimes offered if we can be assured the reason for the ban will not be repeated.",
+              "This text is shown when a user needs to appeal the suspension of their account.",
+              "If you would like to appeal this suspension, please enter your appeal here and it will be reviewed by a moderator. Second chances are sometimes offered if we can be assured the reason for the suspension will not be repeated.",
           );
 
     return (
@@ -85,14 +86,17 @@ export function Appeal(props: { player_id?: number }): JSX.Element {
                     )}
                 </h1>
             ) : still_banned ? (
-                <h1>{_("You, or someone on your network, has been banned from the site. ")}</h1>
+                <h1>{_("Your account has been suspended. ")}</h1>
             ) : (
-                <h1>{_("Your ban has been lifted, welcome back.")}</h1>
+                <h1>{_("Your account has been re-activated, welcome back.")}</h1>
             )}
             {ban_reason && still_banned && (
                 <h2>
                     {interpolate(
-                        pgettext("Reason the player was banned", "Reason for ban: {{reason}}"),
+                        pgettext(
+                            "Reason the player's account was suspended",
+                            "Reason for suspension: {{reason}}",
+                        ),
                         {
                             reason: ban_reason,
                         },
@@ -101,23 +105,39 @@ export function Appeal(props: { player_id?: number }): JSX.Element {
             )}
             {ban_expiration && still_banned && (
                 <h2>
-                    {interpolate(pgettext("Expiration of the ban", "Ban expires: {{expiration}}"), {
-                        expiration: moment(ban_expiration).format("LLL"),
-                    })}
+                    {interpolate(
+                        pgettext(
+                            "When their account will be restored",
+                            "Supension expires: {{expiration}}",
+                        ),
+                        {
+                            expiration: moment(ban_expiration).format("LLL"),
+                        },
+                    )}
                 </h2>
             )}
             {state && (
                 <>
                     {mod ? (
-                        <select value={state} onChange={updateState}>
-                            <option value="awaiting_moderator_response">
-                                {_("Awaiting moderator response")}
-                            </option>
-                            <option value="awaiting_player_response">
-                                {_("Awaiting player response")}
-                            </option>
-                            <option value="resolved">{_("Resolved")}</option>
-                        </select>
+                        <div>
+                            <select value={state} onChange={updateState}>
+                                <option value="awaiting_moderator_response">
+                                    {_("Awaiting moderator response")}
+                                </option>
+                                <option value="awaiting_player_response">
+                                    {_("Awaiting player response")}
+                                </option>
+                                <option value="resolved">{_("Resolved")}</option>
+                            </select>
+                            <input
+                                name="allow_further_appeals"
+                                id="allow_further_appeals"
+                                type="checkbox"
+                                checked={allow_further_appeals}
+                                onChange={updateAllowFurtherAppeals}
+                            />{" "}
+                            <label htmlFor="allow_further_appeals">Allow further appeals</label>
+                        </div>
                     ) : (
                         <h3>{getStateString(state)}</h3>
                     )}
@@ -163,6 +183,13 @@ export function Appeal(props: { player_id?: number }): JSX.Element {
             .catch(errorAlerter);
     }
 
+    function updateAllowFurtherAppeals(ev) {
+        setAllowFurtherAppeals(ev.target.checked);
+        patch(`appeal/${player_id}`, { allow_further_appeals: ev.target.checked })
+            .then(() => 0)
+            .catch(errorAlerter);
+    }
+
     function submit() {
         post("appeal/messages", {
             player_id,
@@ -191,6 +218,7 @@ export function Appeal(props: { player_id?: number }): JSX.Element {
                 setReasonForBan(response.reason_for_ban);
                 setBanExpiration(response.ban_expiration);
                 setStillBanned(response.still_banned);
+                setAllowFurtherAppeals(response.allow_further_appeals);
                 //setAppeal(response);
             })
             .catch(errorAlerter);

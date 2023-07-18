@@ -32,6 +32,7 @@ import { UserHistory } from "./UserHistory";
 import { ReportedGame } from "./ReportedGame";
 import { AppealView } from "./AppealView";
 import { get } from "requests";
+import { MessageTemplate, WARNING_TEMPLATES, REPORTER_RESPONSE_TEMPLATES } from "./MessageTemplate";
 
 // Used for saving updates to the report
 let report_note_id = 0;
@@ -50,7 +51,7 @@ export function ViewReport({ report_id, reports, onChange }: ViewReportProps): J
     const user = useUser();
     const [moderatorNote, setModeratorNote] = React.useState("");
     const [moderators, setModerators] = React.useState(cached_moderators);
-    const [report, setReport] = React.useState(null);
+    const [report, setReport] = React.useState<Report>(null);
     const [error, setError] = React.useState(null);
     const [moderator_id, setModeratorId] = React.useState(report?.moderator?.id);
     const [reportState, setReportState] = React.useState(report?.state);
@@ -171,6 +172,13 @@ export function ViewReport({ report_id, reports, onChange }: ViewReportProps): J
         },
         [report],
     );
+
+    const claimReport = () => {
+        if (report.moderator?.id !== user.id) {
+            setReportState("claimed");
+            void report_manager.claim(report.id);
+        }
+    };
 
     if (!report || report_id === 0) {
         return (
@@ -333,14 +341,7 @@ export function ViewReport({ report_id, reports, onChange }: ViewReportProps): J
                             )}
                         </>
                     ) : (
-                        <button
-                            className="primary xs"
-                            onClick={() => {
-                                report.moderator = user;
-                                setReportState("claimed");
-                                void report_manager.claim(report.id);
-                            }}
-                        >
+                        <button className="primary xs" onClick={claimReport}>
                             {_("Claim")}
                         </button>
                     )}
@@ -432,60 +433,95 @@ export function ViewReport({ report_id, reports, onChange }: ViewReportProps): J
             </div>
 
             <div className="actions">
-                {reportState !== "resolved" && claimed_by_me && (
-                    <button
-                        className="success"
-                        onClick={() => {
-                            void report_manager.good_report(report.id);
-                            next();
-                        }}
-                    >
-                        Close as good report
-                    </button>
-                )}
+                <div className="actions-left">
+                    {!claimed_by_me && !report.moderator && (
+                        <button className="primary" onClick={claimReport}>
+                            Claim
+                        </button>
+                    )}
+                </div>
+                <div className="actions-right">
+                    {reportState !== "resolved" && claimed_by_me && (
+                        <button
+                            className="success"
+                            onClick={() => {
+                                void report_manager.good_report(report.id);
+                                next();
+                            }}
+                        >
+                            Close as good report
+                        </button>
+                    )}
 
-                {reportState !== "resolved" && claimed_by_me && (
-                    <button
-                        className="reject"
-                        onClick={() => {
-                            void report_manager.bad_report(report.id);
-                            next();
-                        }}
-                    >
-                        Close as bad report
-                    </button>
-                )}
+                    {reportState !== "resolved" && claimed_by_me && (
+                        <button
+                            className="reject"
+                            onClick={() => {
+                                void report_manager.bad_report(report.id);
+                                next();
+                            }}
+                        >
+                            Close as bad report
+                        </button>
+                    )}
 
-                {reportState === "resolved" && (
-                    <button
-                        className="default"
-                        onClick={() => void report_manager.reopen(report.id)}
-                    >
-                        Re-open
-                    </button>
-                )}
+                    {reportState === "resolved" && (
+                        <button
+                            className="default"
+                            onClick={() => void report_manager.reopen(report.id)}
+                        >
+                            Re-open
+                        </button>
+                    )}
 
-                {!claimed_by_me && !report.moderator && (
-                    <button
-                        className="primary"
-                        onClick={() => void report_manager.claim(report.id)}
-                    >
-                        Claim
-                    </button>
-                )}
-
-                {!claimed_by_me && (
-                    <button
-                        className="default"
-                        onClick={() => {
-                            void report_manager.ignore(report.id);
-                            next();
-                        }}
-                    >
-                        Ignore
-                    </button>
-                )}
+                    {!claimed_by_me && (
+                        <button
+                            className="default"
+                            onClick={() => {
+                                void report_manager.ignore(report.id);
+                                next();
+                            }}
+                        >
+                            Ignore
+                        </button>
+                    )}
+                </div>
             </div>
+
+            <hr />
+
+            <div className="automod-analysis">
+                <b>Automod Analysis:</b>{" "}
+                <span className="analysis">{report.automod_to_moderator}</span>
+            </div>
+
+            <div className="message-templates">
+                <MessageTemplate
+                    title="Accused"
+                    player={report.reported_user}
+                    templates={WARNING_TEMPLATES}
+                    game_id={report.reported_game}
+                    gpt={report.automod_to_reported}
+                    logByDefault={true}
+                    onSelect={claimReport}
+                    onMessage={claimReport}
+                />
+
+                <MessageTemplate
+                    title="Reporter"
+                    player={report.reporting_user}
+                    templates={REPORTER_RESPONSE_TEMPLATES}
+                    game_id={report.reported_game}
+                    gpt={report.automod_to_reporter}
+                    logByDefault={false}
+                    onSelect={claimReport}
+                    onMessage={claimReport}
+                />
+            </div>
+
+            <hr />
+
+            <UserHistory user={report.reported_user} />
 
             <hr />
 
@@ -515,10 +551,6 @@ export function ViewReport({ report_id, reports, onChange }: ViewReportProps): J
                     ))}
                 </div>
             )}
-
-            <hr />
-
-            <UserHistory user={report.reported_user} />
         </div>
     );
 }

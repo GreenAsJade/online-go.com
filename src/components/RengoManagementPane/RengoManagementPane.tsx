@@ -17,13 +17,14 @@
 
 import * as React from "react";
 import * as DynamicHelp from "react-dynamic-help";
-
+import { Challenge } from "challenge_utils";
+import { useUser } from "hooks";
 import { _, pgettext, interpolate } from "translate";
 
 interface RengoManagementPaneProperties {
     user: rest_api.UserConfig;
     challenge_id: number;
-    rengo_challenge_list: any[];
+    rengo_challenge_list: Array<Challenge>;
 
     startRengoChallenge: (challenge: any) => Promise<void>;
     cancelChallenge: (challenge: any) => void;
@@ -38,6 +39,7 @@ interface RengoManagementPaneProperties {
  * */
 
 export function RengoManagementPane(props: RengoManagementPaneProperties): JSX.Element {
+    const user = useUser();
     const { registerTargetItem } = React.useContext(DynamicHelp.Api);
 
     const { ref: rengoManagementPane } = registerTargetItem("active-rengo-management-pane");
@@ -70,17 +72,22 @@ export function RengoManagementPane(props: RengoManagementPaneProperties): JSX.E
         the_challenge.rengo_black_team.length -
         the_challenge.rengo_white_team.length;
 
+    const created_at = the_challenge.created
+        ? the_challenge.created.slice(0, 10)
+        : "before 2023-05-26"; // can get rid of this when old challenges are gone
+
     return (
         <div className="RengoManagementPane" ref={rengoManagementPane}>
-            {!the_challenge.rengo_auto_start && (
-                <div className="rengo-challenge-status">
-                    {own_challenge && challenge_ready_to_start
+            <div className="rengo-challenge-status">
+                <span>
+                    {own_challenge && challenge_ready_to_start && !the_challenge.rengo_auto_start
                         ? _("Waiting for your decision to start...")
-                        : challenge_ready_to_start
+                        : challenge_ready_to_start && !the_challenge.rengo_auto_start
                         ? _("Waiting for organiser to start...")
                         : _("Waiting for Rengo players...")}
-                </div>
-            )}
+                </span>
+                <span className="challenge-created-at">(created: {created_at})</span>
+            </div>
             {!!the_challenge.rengo_auto_start && (
                 <div className="auto-start-status">
                     {interpolate(_("Game auto-starts when {{auto_start_remaining}} more join..."), {
@@ -128,6 +135,7 @@ export function RengoManagementPane(props: RengoManagementPaneProperties): JSX.E
                     <button
                         onClick={() => props.joinRengoChallenge(the_challenge)}
                         className="btn success sm"
+                        disabled={user.anonymous}
                     >
                         {_("Join")}
                     </button>

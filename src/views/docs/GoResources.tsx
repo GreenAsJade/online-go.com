@@ -58,6 +58,7 @@ export const GoResources = () => {
     const hk = getLanguageFlag("hk", country, "hk");
     const gr = "gr";
     const br = "br";
+    const _in = "in";
     const ar = getLanguageFlag("spanish", country, "ar");
 
     return (
@@ -311,11 +312,6 @@ export const GoResources = () => {
                                     Go Magic
                                 </a>
                             </span>,
-                            <BasicResource
-                                countries={["jp"]}
-                                title="Hoenkikaku Co, Ltd."
-                                href="https://www.hoenkikaku.co.jp/"
-                            />,
                         ).map((elt, idx) => (
                             <dd key={idx}>{elt}</dd>
                         ))}
@@ -445,9 +441,9 @@ export const GoResources = () => {
                                 href="https://www.youtube.com/@TakumiGoAcademy"
                             />,
                             <BasicResource
-                                countries={[en]}
-                                title="Jonathan Markowitz"
-                                href="https://www.youtube.com/user/KNMeepsie"
+                                countries={[_in, en]}
+                                title="Association of Indian Go Players"
+                                href="https://www.youtube.com/@aigpindia"
                             />,
                             <span>
                                 <Flag country={en} />{" "}
@@ -679,6 +675,16 @@ export const GoResources = () => {
                     <dl>
                         <dt>{_("Sites")}</dt>
                         {scramble(
+                            <BasicResource
+                                countries={[eu]}
+                                title="EGF Academy"
+                                href="https://academy.eurogofed.org/"
+                            />,
+                            <BasicResource
+                                countries={["jp"]}
+                                title="Hoenkikaku Co, Ltd."
+                                href="https://www.hoenkikaku.co.jp/"
+                            />,
                             <BasicResource
                                 countries={[en]}
                                 title="Open Study Room"
@@ -991,6 +997,11 @@ export const GoResources = () => {
                                 title="DGoB"
                                 href="http://www.dgob.de/yabbse/index.php"
                             />,
+                            <BasicResource
+                                countries={[en]}
+                                title="Lemmy"
+                                href="https://lemmy.ml/c/baduk"
+                            />,
                         ).map((elt, idx) => (
                             <dd key={idx}>{elt}</dd>
                         ))}
@@ -1049,6 +1060,11 @@ export const GoResources = () => {
                                 title="[LKGS] Lanke Go Server"
                                 href="http://lanke.cc/"
                             />,
+                            <BasicResource
+                                countries={[en]}
+                                title="Kids Go Server"
+                                href="https://kidsgoserver.com/"
+                            />,
                         ).map((elt, idx) => (
                             <dd key={idx}>{elt}</dd>
                         ))}
@@ -1057,6 +1073,16 @@ export const GoResources = () => {
                     <dl>
                         <dt>{_("Organizations")}</dt>
                         {scramble(
+                            <BasicResource
+                                countries={["in"]}
+                                title="Association of Indian Go Players"
+                                href="https://aigp.org.in/"
+                            />,
+                            <BasicResource
+                                countries={["_cat"]}
+                                title="Asociatia Dorna GO"
+                                href="https://asociatiadornago.com/"
+                            />,
                             <BasicResource
                                 countries={[us]}
                                 title="American Go Association"

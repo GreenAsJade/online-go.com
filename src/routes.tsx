@@ -29,7 +29,7 @@ import { SignIn } from "SignIn";
 import { Register } from "Register";
 import { ChallengeLinkLanding } from "ChallengeLinkLanding";
 import { Overview } from "Overview";
-import { Admin, MerchantLog, FlaggedGames } from "Admin";
+import { Admin, MerchantLog, FlaggedGames, OnlineLeaguesAdmin } from "Admin";
 import { ChatView } from "ChatView";
 import { Developer } from "Developer";
 import { Game } from "Game";
@@ -51,7 +51,6 @@ import { Supporter } from "Supporter";
 import { Tournament } from "Tournament";
 import { TournamentRecord } from "TournamentRecord";
 import { TournamentListMainView } from "TournamentList";
-import { Tutorial } from "Tutorial";
 import { LearningHub } from "LearningHub";
 import { User, UserByName } from "User";
 import { Settings } from "Settings";
@@ -69,6 +68,7 @@ import { AppealsCenter } from "AppealsCenter";
 import { ReportsCenter } from "ReportsCenter";
 import { Experiment, Variant, Default as ExDefault } from "Experiment";
 import { RatingCalculator } from "RatingCalculator";
+import { AccountWarning } from "AccountWarning";
 
 import * as docs from "docs";
 
@@ -95,6 +95,9 @@ function Main(props): JSX.Element {
                     <ErrorBoundary>
                         <Announcements />
                     </ErrorBoundary>
+                    <ErrorBoundary>
+                        <AccountWarning />
+                    </ErrorBoundary>
                 </div>
             </Variant>
             <ExDefault>
@@ -106,6 +109,9 @@ function Main(props): JSX.Element {
                         <Announcements />
                     </ErrorBoundary>
                     <ErrorBoundary>{props.children}</ErrorBoundary>
+                    <ErrorBoundary>
+                        <AccountWarning />
+                    </ErrorBoundary>
                 </div>
             </ExDefault>
         </Experiment>
@@ -276,6 +282,7 @@ export const routes = (
                 <Route path="/admin/merchant_log" element={<MerchantLog />} />
                 <Route path="/admin/firewall" element={<Firewall />} />
                 <Route path="/admin/flagged_games" element={<FlaggedGames />} />
+                <Route path="/admin/online_leagues" element={<OnlineLeaguesAdmin />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/announcement-center" element={<AnnouncementCenter />} />
                 {/*
@@ -292,10 +299,6 @@ export const routes = (
                 <Route path="/docs/learn-to-play-go/:section/:page" element={<LearningHub />} />
                 <Route path="/docs/learn-to-play-go/:section" element={<LearningHub />} />
                 <Route path="/docs/learn-to-play-go" element={<LearningHub />} />
-                <Route path="/crash-course-learn-to-play-go/:step" element={<Tutorial />} />
-                <Route path="/crash-course-learn-to-play-go" element={<Tutorial />} />
-                <Route path="/docs/crash-course-learn-to-play-go/:step" element={<Tutorial />} />
-                <Route path="/docs/crash-course-learn-to-play-go" element={<Tutorial />} />
                 {/* these aren't meant to be linked anywhere, just entered by hand
                 for developers looking to test and play with things */}
                 <Route path="/dev/styling" element={<Styling />} />

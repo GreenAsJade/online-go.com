@@ -21,10 +21,10 @@ import * as React from "react";
 import * as moment from "moment";
 import { LineText } from "misc-ui";
 import { Link } from "react-router-dom";
-import { _, pgettext, interpolate } from "translate";
+import { _, pgettext, interpolate, current_language } from "translate";
 import { Player } from "Player";
 import { profanity_filter } from "profanity_filter";
-import { Goban, GobanCore } from "goban";
+import { Goban, GobanCore, protocol } from "goban";
 import { ChatUserList, ChatUserCount } from "ChatUserList";
 import { TabCompleteInput } from "TabCompleteInput";
 import { chat_markup } from "components/Chat";
@@ -45,7 +45,11 @@ interface GameChatProperties {
 
 interface ChatLine {
     chat_id: string;
-    body: string | AnalysisComment | ReviewComment;
+    body:
+        | string
+        | protocol.GameChatAnalysisMessage
+        | protocol.GameChatReviewMessage
+        | protocol.GameChatTranslatedMessage;
     date: number;
     move_number: number;
     from?: number;
@@ -65,14 +69,11 @@ interface GameChatLineProperties {
 export function GameChat(props: GameChatProperties): JSX.Element {
     const user = data.get("user");
     const goban = useGoban();
-    const in_game_mod_channel = !props.review_id && inGameModChannel(props.game_id);
-
+    const defaultChatMode = preferences.get("chat-mode") as ChatMode;
     const ref_chat_log = React.useRef<HTMLDivElement>(null);
     const scrolled_to_bottom = React.useRef(true);
     const [show_quick_chat, setShowQuickChat] = React.useState(false);
-    const [selected_chat_log, setSelectedChatLog] = React.useState<ChatMode>(
-        in_game_mod_channel ? "hidden" : "main",
-    );
+    const { selected_chat_log, onSelectedChatModeChange } = props;
     const [show_player_list, setShowPlayerList] = React.useState(false);
 
     const chat_log_hash = React.useRef<{ [k: string]: boolean }>({});
@@ -150,9 +151,9 @@ export function GameChat(props: GameChatProperties): JSX.Element {
         const onAnonymousOverrideChange = () => {
             const in_game_mod_channel = inGameModChannel(props.game_id || props.review_id);
             if (in_game_mod_channel) {
-                setSelectedChatLog("hidden");
+                onSelectedChatModeChange("hidden");
             } else {
-                setSelectedChatLog("main");
+                onSelectedChatModeChange(defaultChatMode);
             }
         };
 
@@ -209,7 +210,7 @@ export function GameChat(props: GameChatProperties): JSX.Element {
 
     const toggleChatLog = (isModerator: boolean) => {
         const new_chat_log = nextChatMode(selected_chat_log, isModerator);
-        setSelectedChatLog(new_chat_log);
+        onSelectedChatModeChange(new_chat_log);
         setShowQuickChat(false);
         props.onSelectedChatModeChange(new_chat_log);
     };
@@ -556,20 +557,6 @@ function parsePosition(position: string, goban: GobanCore) {
     return { i: i, j: j };
 }
 
-interface AnalysisComment {
-    type: "analysis";
-    name?: string;
-    branch_move?: number; // deprecated
-    from?: number;
-    moves?: string;
-    marks?: { [mark: string]: string };
-    pen_marks?: unknown[];
-}
-interface ReviewComment {
-    type: "review";
-    review_id: number;
-}
-
 let orig_move: MoveTree = null;
 let stashed_pen_marks = null; //goban.pen_marks;
 let orig_marks: unknown[] = null;
@@ -623,6 +610,9 @@ function MarkupChatLine({ line }: { line: ChatLine }): JSX.Element {
     } else {
         try {
             switch (body.type) {
+                case "translated":
+                    return <span>{getTranslatedMessageText(body)}</span>;
+
                 case "analysis": {
                     if (!preferences.get("variations-in-chat-enabled")) {
                         return (
@@ -792,4 +782,22 @@ function ChatLogToggleButton(props: ChatLogToggleButtonProperties): JSX.Element 
             />
         </button>
     );
+}
+
+function getTranslatedMessageText(msg: protocol.GameChatTranslatedMessage): string {
+    if (current_language in msg) {
+        return msg[current_language];
+    }
+
+    if ("en" in msg) {
+        return msg.en;
+    }
+
+    for (const key in msg as any) {
+        if (key !== "type") {
+            return `${msg[key]}`;
+        }
+    }
+
+    return "<error: translated chat body is missing>";
 }

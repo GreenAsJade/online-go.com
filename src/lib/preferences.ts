@@ -17,7 +17,7 @@
 
 import * as data from "data";
 import { GobanSelectedThemes, GoThemes, LabelPosition } from "goban";
-import React from "react";
+import * as React from "react";
 import { current_language } from "translate";
 import { DataSchema } from "./data_schema";
 
@@ -34,11 +34,14 @@ export const defaults = {
     "chat.show-all-group-channels": true,
     "chat.show-all-tournament-channels": true,
     "chat.user-sort-order": "rank",
+    "chat-mode": "main",
     "desktop-notifications": true,
+    "desktop-notifications-require-interaction": false,
     "dock-delay": 0, // seconds.
     "double-click-submit-correspondence": false,
     "double-click-submit-live": false,
     "variation-stone-transparency": 0.6,
+    "variation-move-count": 10,
     "visual-undo-request-indicator": true,
     "dynamic-title": true,
     "function-keys-enabled": false,
@@ -131,7 +134,7 @@ export const defaults = {
         };
     },
     "moderator.report-sort-order": "oldest-first" as "oldest-first" | "newest-first",
-    "moderator.hide-next-game-arrows": false,
+    "moderator.hide-player-card-mod-controls": false,
 
     "table-color-default-on": false,
 

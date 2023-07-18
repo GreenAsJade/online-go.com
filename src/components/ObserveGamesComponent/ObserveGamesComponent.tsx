@@ -113,9 +113,9 @@ export class ObserveGamesComponent extends React.PureComponent<
 
     syncSubscribe = () => {
         if (Object.keys(this.namespacedPreferenceGet("observed-games-filter")).length === 0) {
-            socket.send("gamelist/count/subscribe", this.channel);
+            socket.send("gamelist/count/subscribe", { channel: this.channel });
         } else {
-            socket.send("gamelist/count/unsubscribe", this.channel);
+            socket.send("gamelist/count/unsubscribe", { channel: this.channel });
         }
     };
 
@@ -153,7 +153,7 @@ export class ObserveGamesComponent extends React.PureComponent<
         }
         socket.off("connect", this.syncSubscribe);
         if (socket.connected) {
-            socket.send("gamelist/count/unsubscribe", this.channel);
+            socket.send("gamelist/count/unsubscribe", { channel: this.channel });
         }
         if (this.auto_refresh) {
             clearInterval(this.auto_refresh);
@@ -342,7 +342,7 @@ export class ObserveGamesComponent extends React.PureComponent<
                             <div className="page-controls">
                                 {((this.state.num_pages && this.state.num_pages > 0) || null) && (
                                     <div className="left">
-                                        {this.state.page > 1 ? (
+                                        {(this.state.page as number) > 1 ? (
                                             <i
                                                 className="fa fa-step-backward"
                                                 onClick={this.prevPage}
@@ -355,7 +355,7 @@ export class ObserveGamesComponent extends React.PureComponent<
                                         <span className="total">
                                             {this.state.num_pages.toString()}
                                         </span>
-                                        {this.state.page < this.state.num_pages ? (
+                                        {(this.state.page as number) < this.state.num_pages ? (
                                             <i
                                                 className="fa fa-step-forward"
                                                 onClick={this.nextPage}

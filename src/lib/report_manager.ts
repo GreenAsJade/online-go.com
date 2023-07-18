@@ -57,6 +57,10 @@ export interface Report {
     moderator_note: string;
     system_note: string;
 
+    automod_to_moderator?: string; // Suggestions from "automod"
+    automod_to_reporter?: string;
+    automod_to_reported?: string;
+
     unclaim: () => void;
     claim: () => void;
     steal: () => void;
@@ -89,15 +93,7 @@ class ReportManager extends EventEmitter<Events> {
         super();
 
         const connect_fn = () => {
-            const user = data.get("user");
             this.active_incident_reports = {};
-
-            if (!user.anonymous) {
-                socket.send("incident/connect", {
-                    player_id: user.id,
-                    auth: data.get("config.incident_auth"),
-                });
-            }
 
             post_connect_notification_squelch = true;
             setTimeout(() => {
@@ -110,7 +106,9 @@ class ReportManager extends EventEmitter<Events> {
             connect_fn();
         }
 
-        socket.on("incident-report", (report: Report) => this.updateIncidentReport(report));
+        socket.on("incident-report", (report) =>
+            this.updateIncidentReport(report as any as Report),
+        );
 
         preferences.watch("moderator.report-settings", () => {
             this.update();
@@ -166,7 +164,7 @@ class ReportManager extends EventEmitter<Events> {
             const report = this.active_incident_reports[id];
             if ((prefs[report.report_type]?.visible ?? true) && !this.getIgnored(report.id)) {
                 reports.push(report);
-                if (report.moderator === null || report.moderator.id === user.id) {
+                if (!report.moderator || report.moderator.id === user.id) {
                     normal_ct++;
                 }
             }

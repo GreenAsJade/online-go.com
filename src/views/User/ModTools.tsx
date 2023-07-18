@@ -152,7 +152,22 @@ export function ModTools(props: ModToolsProps): JSX.Element {
                             {
                                 header: "Inet",
                                 className: "inet",
-                                render: (X) => <IPDetails ip={X.last_ip} details={X.ip_details} />,
+                                render: (X) => (
+                                    <a
+                                        href={
+                                            "https://online-go.com/api/v1/moderation/recent_users?id=" +
+                                            X.id
+                                        }
+                                        target={"_blank"}
+                                    >
+                                        <IPDetails ip={X.last_ip} details={X.ip_details} />
+                                    </a>
+                                ),
+                            },
+                            {
+                                header: "Shared BIDs",
+                                className: "bid_match",
+                                render: (X) => X.bid_match && <i className="fa fa-check" />,
                             },
                         ]}
                     />
@@ -167,6 +182,7 @@ export function ModTools(props: ModToolsProps): JSX.Element {
                 className="moderator-log"
                 name="moderator-log"
                 source={`moderation?player_id=${props.user_id}`}
+                pageSizeOptions={[1, 2, 3, 5, 7, 10, 20, 25, 50, 100]}
                 uiPushProps={{
                     event: `modlog-${props.user_id}-updated`,
                     channel: "moderators",
@@ -188,6 +204,11 @@ export function ModTools(props: ModToolsProps): JSX.Element {
                         render: (X) => (
                             <div>
                                 <div className="action">
+                                    {X.incident_report?.id ? (
+                                        <Link to={`/reports-center/all/${X.incident_report.id}`}>
+                                            R{X.incident_report.id.toString().substr(-3)}
+                                        </Link>
+                                    ) : null}
                                     {X.game ? (
                                         <Link to={`/game/${X.game.id}`}>{X.game.id}</Link>
                                     ) : null}

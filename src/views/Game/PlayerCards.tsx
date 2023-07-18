@@ -34,6 +34,8 @@ import { get_network_latency, get_clock_drift } from "sockets";
 import { useGoban } from "./goban_context";
 import { usePreference } from "preferences";
 import { browserHistory } from "ogsHistory";
+import { player_is_ignored } from "BlockPlayer";
+import { doAnnul } from "moderation";
 
 type PlayerType = rest_api.games.Player;
 
@@ -201,7 +203,7 @@ interface PlayerCardProps {
     flags: null | rest_api.GamePlayerFlags;
 }
 
-function PlayerCard({
+export function PlayerCard({
     color,
     goban,
     historical,
@@ -220,13 +222,14 @@ function PlayerCard({
     const score = useScore(goban)[color];
     const { game_id, review_id } = goban;
     const chat_channel = game_id ? `game-${game_id}` : `review-${review_id}`;
-    const [hide_next_game_arrows, setHideNextGameArrows] = usePreference(
-        "moderator.hide-next-game-arrows",
+    const [hide_player_card_mod_controls] = usePreference(
+        "moderator.hide-player-card-mod-controls",
     );
 
     const user = useUser();
 
-    const show_next_game_arrows = user.is_moderator && game_id && !hide_next_game_arrows;
+    const show_player_card_mod_controls =
+        user.is_moderator && game_id && !hide_player_card_mod_controls;
 
     const jumpToPrevGame = () => {
         get(`games/${game_id}/prev/${player.id}`)
@@ -250,8 +253,8 @@ function PlayerCard({
             });
     };
 
-    const hideNextGameArrows = () => {
-        setHideNextGameArrows(true);
+    const annulWithBlame = () => {
+        doAnnul(engine.config, true, null, ` ${color} `); // spaces make it easy for the user to put the cursor before or after, they are trimmed later
     };
 
     // In rengo we always will have a player icon to show (after initialisation).
@@ -264,6 +267,10 @@ function PlayerCard({
     } else if (historical) {
         const icon = icon_size_url(historical["icon"], 64);
         player_bg.backgroundImage = `url("${icon}")`;
+    }
+
+    if (player_is_ignored(player.id)) {
+        player_bg.backgroundImage = ``;
     }
 
     const their_turn = player_to_move === player.id;
@@ -311,10 +318,14 @@ function PlayerCard({
                 </span>
             )}
 
-            {(show_next_game_arrows || null) && (
-                <div className="next-game-arrows">
+            {(show_player_card_mod_controls || null) && (
+                <div className="player-card-mod-controls">
                     <i className="fa fa-2x fa-angle-left" onClick={jumpToPrevGame} />
-                    <i className="fa fa-eye-slash" onClick={hideNextGameArrows} />
+                    <div className="middle-mod-controls">
+                        {(engine.phase === "finished" || null) && (
+                            <i className="fa fa-gavel" onClick={annulWithBlame} />
+                        )}
+                    </div>
                     <i className="fa fa-2x fa-angle-right" onClick={jumpToNextGame} />
                 </div>
             )}

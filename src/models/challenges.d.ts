@@ -55,6 +55,7 @@ declare namespace socket_api {
             rengo_participants: number[]; // array of player ids
             invite_only: boolean;
             uuid: string;
+            created?: string | null; // ISO 8601 format datetime
 
             // All this stuff seems to get added *after* we get a challenge from the api
             // but I don't have a good idea where to put it for now... (benjito)
@@ -111,6 +112,7 @@ declare namespace rest_api {
     // you would expect this to be what's on any route returning an Open (not Direct) challenge.
     interface OpenChallengeDTO {
         id: number;
+        created?: string | null;
         challenger: MinimalPlayerDTO;
         group: number;
         game?: GameDTO; // not clear why/when this would not be present

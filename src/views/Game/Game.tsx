@@ -44,7 +44,7 @@ import { setExtraActionCallback, PlayerDetails } from "Player";
 import * as player_cache from "player_cache";
 import { notification_manager } from "Notifications";
 import { Resizable } from "Resizable";
-import { chat_manager, ChatChannelProxy } from "chat_manager";
+import { chat_manager, ChatChannelProxy, inGameModChannel } from "chat_manager";
 import { sfx, SFXSprite, ValidSound } from "sfx";
 import { AIReview } from "./AIReview";
 import { GameChat, ChatMode } from "./GameChat";
@@ -109,7 +109,11 @@ export function Game(): JSX.Element {
     const [zen_mode, set_zen_mode] = React.useState(preferences.get("start-in-zen-mode"));
     const [autoplaying, set_autoplaying] = React.useState(false);
     const [review_list, set_review_list] = React.useState([]);
-    const [selected_chat_log, set_selected_chat_log] = React.useState<ChatMode>("main");
+    const defaultChatMode = preferences.get("chat-mode") as ChatMode;
+    const in_game_mod_channel = !review_id && inGameModChannel(game_id);
+    const [selected_chat_log, set_selected_chat_log] = React.useState<ChatMode>(
+        in_game_mod_channel ? "hidden" : defaultChatMode,
+    );
     const [variation_name, set_variation_name] = React.useState("");
     const [historical_black, set_historical_black] = React.useState<rest_api.games.Player | null>(
         null,
@@ -806,27 +810,27 @@ export function Game(): JSX.Element {
             <div className="action-bar">
                 <span className="icons" />
                 <span className="controls">
-                    <span onClick={nav_first} className="move-control">
+                    <button type="button" onClick={nav_first} className="move-control">
                         <i className="fa fa-fast-backward"></i>
-                    </span>
-                    <span onClick={nav_prev_10} className="move-control">
+                    </button>
+                    <button type="button" onClick={nav_prev_10} className="move-control">
                         <i className="fa fa-backward"></i>
-                    </span>
-                    <span onClick={nav_prev} className="move-control">
+                    </button>
+                    <button type="button" onClick={nav_prev} className="move-control">
                         <i className="fa fa-step-backward"></i>
-                    </span>
-                    <span onClick={nav_play_pause} className="move-control">
+                    </button>
+                    <button type="button" onClick={nav_play_pause} className="move-control">
                         <i className={"fa " + (autoplaying ? "fa-pause" : "fa-play")}></i>
-                    </span>
-                    <span onClick={nav_next} className="move-control">
+                    </button>
+                    <button type="button" onClick={nav_next} className="move-control">
                         <i className="fa fa-step-forward"></i>
-                    </span>
-                    <span onClick={nav_next_10} className="move-control">
+                    </button>
+                    <button type="button" onClick={nav_next_10} className="move-control">
                         <i className="fa fa-forward"></i>
-                    </span>
-                    <span onClick={nav_last} className="move-control">
+                    </button>
+                    <button type="button" onClick={nav_last} className="move-control">
                         <i className="fa fa-fast-forward"></i>
-                    </span>
+                    </button>
                 </span>
 
                 {(view_mode !== "portrait" || null) && (
@@ -1341,7 +1345,7 @@ export function Game(): JSX.Element {
             }
             console.log("unmounting, going to destroy", goban);
             chat_proxy.current.part();
-            set_selected_chat_log("main");
+            set_selected_chat_log(defaultChatMode);
             delete game_control.creator_id;
             ladder_id.current = null;
             tournament_id.current = null;
@@ -1424,6 +1428,8 @@ export function Game(): JSX.Element {
     );
     const review = !!review_id;
 
+    const experimental: boolean = data.get("experiments.v6") === "enabled";
+
     return (
         <div>
             <div
@@ -1498,7 +1504,7 @@ export function Game(): JSX.Element {
                     </div>
 
                     {(view_mode !== "portrait" || null) && (
-                        <div className="right-col">
+                        <div className={"right-col" + (experimental ? " experimental" : "")}>
                             {(zen_mode || null) && <div className="align-col-start"></div>}
                             {(view_mode === "square" || view_mode === "wide" || null) && (
                                 <PlayerCards

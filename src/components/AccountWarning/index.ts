@@ -15,7 +15,4 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-.InstructionalGoban {
-    display: inline-block;
-}
-
+export * from "./AccountWarning";

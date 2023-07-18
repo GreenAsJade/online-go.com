@@ -24,7 +24,12 @@ import { usePreference, ValidPreference } from "preferences";
 
 import { Toggle } from "Toggle";
 
-import { PreferenceLine, PreferenceDropdown, MAX_DOCK_DELAY } from "SettingsCommon";
+import {
+    PreferenceLine,
+    PreferenceDropdown,
+    MAX_DOCK_DELAY,
+    MAX_AI_VAR_MOVES,
+} from "SettingsCommon";
 
 export function GamePreferences(): JSX.Element {
     const [dock_delay, _setDockDelay]: [number, (x: number) => void] = React.useState(
@@ -38,6 +43,7 @@ export function GamePreferences(): JSX.Element {
     const [_corr_submit_mode, _setCorrSubmitMode]: [string, (x: string) => void] = React.useState(
         getSubmitMode("correspondence"),
     );
+    const [chat_mode, _setChatMode] = usePreference("chat-mode");
     const [board_labeling, setBoardLabeling] = usePreference("board-labeling");
 
     const [autoadvance, setAutoAdvance] = usePreference("auto-advance-after-submit");
@@ -51,6 +57,7 @@ export function GamePreferences(): JSX.Element {
     const [variation_stone_transparency, _setVariationStoneTransparency] = usePreference(
         "variation-stone-transparency",
     );
+    const [variation_move_count, _setVariationMoveCount] = usePreference("variation-move-count");
     const [visual_undo_request_indicator, setVisualUndoRequestIndicator] = usePreference(
         "visual-undo-request-indicator",
     );
@@ -76,6 +83,11 @@ export function GamePreferences(): JSX.Element {
         const dbl = preferences.get(`double-click-submit-${speed}` as ValidPreference);
         return single ? "single" : dbl ? "double" : "button";
     }
+
+    function setChatMode(value) {
+        _setChatMode(value);
+    }
+
     function setSubmitMode(speed, mode) {
         switch (mode) {
             case "single":
@@ -111,12 +123,18 @@ export function GamePreferences(): JSX.Element {
             _setVariationStoneTransparency(value);
         }
     }
-    function updateAutoplayDelay(ev) {
-        const delay = parseFloat(ev.target.value);
+    function setVariationMoveCount(ev) {
+        const value = parseInt(ev.target.value);
 
-        if (delay >= 0.1) {
-            _setAutoplayDelay(delay);
-            preferences.set("autoplay-delay", Math.round(1000 * delay));
+        if (value >= 1 && value <= 10) {
+            _setVariationMoveCount(value);
+        }
+    }
+    function updateAutoplayDelay(ev) {
+        const value = parseInt(ev.target.value);
+        if (value >= 1 && value <= 20) {
+            _setAutoplayDelay(value);
+            preferences.set("autoplay-delay", 1000 * value);
         }
     }
 
@@ -187,12 +205,19 @@ export function GamePreferences(): JSX.Element {
 
             <PreferenceLine title={_("Autoplay delay (in seconds)")}>
                 <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
+                    type="range"
+                    step="1"
+                    min="1"
+                    max="20"
                     onChange={updateAutoplayDelay}
                     value={autoplay_delay}
                 />
+                <span>
+                    &nbsp;
+                    {interpolate(_("{{delay}} secs"), {
+                        delay: autoplay_delay,
+                    })}
+                </span>
             </PreferenceLine>
 
             <PreferenceLine
@@ -248,6 +273,23 @@ export function GamePreferences(): JSX.Element {
             </PreferenceLine>
 
             <PreferenceLine
+                title={_("Set default game chat mode")}
+                description={_(
+                    "The chat mode that is defaulted to when a game is initiated or when the game page is refreshed.",
+                )}
+            >
+                <PreferenceDropdown
+                    value={chat_mode}
+                    options={[
+                        { value: "main", label: _("Chat") },
+                        { value: "malkovich", label: _("Malkovich") },
+                        { value: "personal", label: _("Personal") },
+                    ]}
+                    onChange={setChatMode}
+                />
+            </PreferenceLine>
+
+            <PreferenceLine
                 title={_("Activate Zen Mode by default")}
                 description={_(
                     'When enabled, games you play or view will start off in the full screen "Zen Mode". This can be toggled off in game by clicking the Z icon.',
@@ -263,13 +305,41 @@ export function GamePreferences(): JSX.Element {
                 )}
             >
                 <input
-                    type="number"
+                    type="range"
                     step="0.1"
                     min="0.0"
                     max="1.0"
                     onChange={setVariationStoneTransparency}
                     value={variation_stone_transparency}
                 />
+                <span>
+                    &nbsp;
+                    {interpolate(_("{{transparency_level}}"), {
+                        transparency_level: variation_stone_transparency,
+                    })}
+                </span>
+            </PreferenceLine>
+
+            <PreferenceLine
+                title={_("AI variations shown")}
+                description={_("Maximum number of moves shown in AI variations")}
+            >
+                <input
+                    type="range"
+                    step="1"
+                    min="1"
+                    max={MAX_AI_VAR_MOVES}
+                    onChange={setVariationMoveCount}
+                    value={variation_move_count}
+                />
+                <span>
+                    &nbsp;
+                    {variation_move_count === MAX_AI_VAR_MOVES
+                        ? _("Max") // translators: Indicates the dock slide out has been turned off
+                        : interpolate(_("{{num_moves}} moves"), {
+                              num_moves: variation_move_count,
+                          })}
+                </span>
             </PreferenceLine>
         </div>
     );

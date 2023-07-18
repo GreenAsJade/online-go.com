@@ -118,7 +118,7 @@ export function Tournament(): JSX.Element {
         id: tournament_id,
         name: "",
         // TODO: replace {} with something that makes type sense. -bpj
-        director: tournament_id === 0 ? data.get("user") : ({} as any),
+        director: tournament_id === 0 ? user : ({} as any),
         time_start: moment(new Date()).add(1, "hour").startOf("hour").format(),
 
         board_size: 19,
@@ -280,7 +280,6 @@ export function Tournament(): JSX.Element {
         resolve();
     };
     const refreshPlayerList = () => {
-        const user = data.get("user");
         const ret = get("tournaments/%%/players/all", tournament_id);
 
         ret.then((players) => {
@@ -1455,7 +1454,6 @@ export function Tournament(): JSX.Element {
     };
 
     const renderExtraPlayerActions = (player_id: number) => {
-        const user = data.get("user");
         const tournament = tournament_ref.current;
         if (
             !(
@@ -1490,7 +1488,9 @@ export function Tournament(): JSX.Element {
 
     const tournament = tournament_ref.current;
     const selected_round =
-        rounds && rounds.length > selected_round_idx ? rounds[selected_round_idx] : null;
+        typeof selected_round_idx === "number" && rounds && rounds.length > selected_round_idx
+            ? rounds[selected_round_idx]
+            : null;
     const raw_selected_round =
         rounds && rounds.length > selected_round ? raw_rounds[selected_round] : null;
     window["tournament"] = tournament;
@@ -1607,10 +1607,10 @@ export function Tournament(): JSX.Element {
         cant_join_reason = _(
             "This tournament is closed to provisional players. You need to establish your rank by playing ranked games before you can join this tournament.",
         );
-    } else if (bounded_rank(user) < tournament.min_ranking) {
+    } else if (bounded_rank(user) < parseInt(tournament.min_ranking as string)) {
         can_join = false;
         cant_join_reason = _("Your rank is too low to join this tournament.");
-    } else if (bounded_rank(user) > tournament.max_ranking) {
+    } else if (bounded_rank(user) > parseInt(tournament.max_ranking as string)) {
         can_join = false;
         cant_join_reason = _("Your rank is too high to join this tournament");
     }
@@ -1708,8 +1708,8 @@ export function Tournament(): JSX.Element {
 
                     {!editing && info_loaded && (
                         <div>
-                            {(((data.get("user").is_tournament_moderator ||
-                                data.get("user").id === tournament.director.id) &&
+                            {(((user.is_tournament_moderator ||
+                                user.id === tournament.director.id) &&
                                 !tournament.started &&
                                 !tournament.start_waiting) ||
                                 null) && (
@@ -1940,8 +1940,10 @@ export function Tournament(): JSX.Element {
                                                 {tournament.players_start}
                                                 {!tournament.settings.maximum_players
                                                     ? "+"
-                                                    : tournament.settings.maximum_players >
-                                                      tournament.players_start
+                                                    : parseInt(
+                                                          tournament.settings
+                                                              .maximum_players as string,
+                                                      ) > tournament.players_start
                                                     ? "-" + tournament.settings.maximum_players
                                                     : ""}
                                             </span>
@@ -1951,8 +1953,10 @@ export function Tournament(): JSX.Element {
                                                 {tournament.players_start}
                                                 {!tournament.settings.maximum_players
                                                     ? "+"
-                                                    : tournament.settings.maximum_players >
-                                                      tournament.players_start
+                                                    : parseInt(
+                                                          tournament.settings
+                                                              .maximum_players as string,
+                                                      ) > tournament.players_start
                                                     ? "-" + tournament.settings.maximum_players
                                                     : ""}
                                                 )
@@ -2362,16 +2366,19 @@ export function Tournament(): JSX.Element {
                     )}
                     <div className="player-list">
                         {(tournament.exclusivity !== "invite" ||
-                            data.get("user").is_tournament_moderator ||
-                            tournament.director.id === data.get("user").id ||
+                            user.is_tournament_moderator ||
+                            tournament.director.id === user.id ||
                             null) && (
                             <div className="invite-input">
                                 <div className="input-group" id="tournament-invite-user-container">
-                                    <PlayerAutocomplete onComplete={setUserToInvite} />
+                                    <PlayerAutocomplete
+                                        onComplete={setUserToInvite}
+                                        disabled={user.anonymous}
+                                    />
                                     <button
                                         className="btn primary xs"
                                         type="button"
-                                        disabled={user_to_invite == null}
+                                        disabled={user_to_invite == null || user.anonymous}
                                         onClick={inviteUser}
                                     >
                                         {_("Invite")}

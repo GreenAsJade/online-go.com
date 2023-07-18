@@ -44,7 +44,6 @@ import {
     TimeControl,
 } from "TimeControl";
 import { sfx } from "sfx";
-import * as preferences from "preferences";
 import { notification_manager } from "Notifications/NotificationManager";
 import { one_bot, bot_count, bots_list } from "bots";
 import { goban_view_mode } from "Game/util";
@@ -85,7 +84,37 @@ interface ChallengeModalProperties {
     created?: (c: CreatedChallengeInfo) => void;
 }
 
-export const username_to_id = {};
+/* These rejection details come from gtp2ogs and allows bots to
+ * be clear about why a challenge is being rejected. */
+interface RejectionDetails {
+    rejection_code:
+        | "blacklisted"
+        | "board_size_not_square"
+        | "board_size_not_allowed"
+        | "handicap_not_allowed"
+        | "unranked_not_allowed"
+        | "ranked_not_allowed"
+        | "blitz_not_allowed"
+        | "too_many_blitz_games"
+        | "live_not_allowed"
+        | "too_many_live_games"
+        | "correspondence_not_allowed"
+        | "too_many_correspondence_games"
+        | "time_control_system_not_allowed"
+        | "time_increment_out_of_range"
+        | "period_time_out_of_range"
+        | "periods_out_of_range"
+        | "main_time_out_of_range"
+        | "max_time_out_of_range"
+        | "per_move_time_out_of_range"
+        | "player_rank_out_of_range"
+        | "not_accepting_new_challenges"
+        | "too_many_games_for_player"
+        | "komi_out_of_range";
+    details: {
+        [key: string]: any;
+    };
+}
 
 /* Constants  */
 
@@ -147,7 +176,7 @@ export class ChallengeModal extends Modal<Events, ChallengeModalProperties, any>
                 ranked: true,
                 width: 19,
                 height: 19,
-                handicap: 0,
+                handicap: -1,
                 komi_auto: "automatic",
                 komi: 5.5,
                 disable_analysis: false,
@@ -690,11 +719,14 @@ export class ChallengeModal extends Modal<Events, ChallengeModalProperties, any>
                     browserHistory.push(`/game/${game_id}`);
                 }
 
-                function onRejected(message?: string) {
+                function onRejected(message?: string, details?: RejectionDetails) {
                     off();
                     alert.close();
                     void alert.fire({
-                        text: message || _("Game offer was rejected"),
+                        text:
+                            (details && rejectionDetailsToMessage(details)) ||
+                            message ||
+                            _("Game offer was rejected"),
                     });
                 }
 
@@ -702,7 +734,7 @@ export class ChallengeModal extends Modal<Events, ChallengeModalProperties, any>
                     clearTimeout(keepalive_interval);
                     socket.send("game/disconnect", { game_id: game_id });
                     socket.off(`game/${game_id}/gamedata`, onGamedata);
-                    socket.off(`game/${game_id}/rejected`, onRejected);
+                    //socket.off(`game/${game_id}/rejected`, onRejected);
                     notification_manager.event_emitter.off("notification", checkForReject);
                 }
 
@@ -714,7 +746,7 @@ export class ChallengeModal extends Modal<Events, ChallengeModalProperties, any>
                          * drops, etc. */
                         notification_manager.deleteNotification(notification);
                         if (notification.game_id === game_id) {
-                            onRejected(notification.message);
+                            onRejected(notification.message, notification.rejection_details);
                         }
                     }
                 }
@@ -934,7 +966,28 @@ export class ChallengeModal extends Modal<Events, ChallengeModalProperties, any>
                         )}
                     </div>
                 </div>
-
+                {!(this.props.playerId || null) && (mode === "open" || null) && (
+                    <div className="form-group">
+                        <label className="control-label" htmlFor="challenge-invite-only">
+                            {pgettext(
+                                "A checkbox to make a challenge open only to invited people who have the link to it",
+                                "Invite-only",
+                            )}
+                        </label>
+                        <div className="controls">
+                            {(mode !== "demo" || null) && (
+                                <div className="checkbox">
+                                    <input
+                                        type="checkbox"
+                                        id="challenge-invite-only"
+                                        checked={this.state.challenge.invite_only}
+                                        onChange={this.update_invite_only}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
                 {(mode === "open" || null) && (
                     <div className="form-group">
                         <label className="control-label" htmlFor="rengo-option">
@@ -1688,29 +1741,6 @@ export class ChallengeModal extends Modal<Events, ChallengeModalProperties, any>
                         </button>
                     )}
                 </div>
-                {!(this.props.playerId || null) && (mode === "open" || null) && (
-                    <div className="form-group invite-only-challenge-selector">
-                        <label className="control-label" htmlFor="challenge-invite-only">
-                            {pgettext(
-                                "A checkbox to make a challenge open only to invited people who have the link to it",
-                                "Invite-only",
-                            )}
-                        </label>
-
-                        <div className="controls">
-                            {(mode !== "demo" || null) && (
-                                <div className="checkbox">
-                                    <input
-                                        type="checkbox"
-                                        id="challenge-invite-only"
-                                        checked={this.state.challenge.invite_only}
-                                        onChange={this.update_invite_only}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
                 {(mode !== "demo" || null) && this.preferredGameSettings()}
             </div>
         );
@@ -1819,9 +1849,6 @@ export function createDemoBoard(
         />,
     );
 }
-export function createOpenChallenge() {
-    return challenge();
-}
 export function challengeComputer() {
     return challenge(null, null, true);
 }
@@ -1869,34 +1896,6 @@ export function challengeRematch(
 
     challenge(opponent.id, null, false, config);
 }
-export function createBlitz() {
-    const user = data.get("user");
-    const config = dup(blitz_config);
-    config.challenge.min_ranking = user.ranking - 3;
-    config.challenge.max_ranking = user.ranking + 3;
-    config.challenge.game.width = preferences.get("new-game-board-size");
-    config.challenge.game.height = preferences.get("new-game-board-size");
-    return openModal(<ChallengeModal config={config} mode={"open"} autoCreate={true} />);
-}
-export function createLive() {
-    const user = data.get("user");
-    const config = dup(live_config);
-    config.challenge.min_ranking = user.ranking - 3;
-    config.challenge.max_ranking = user.ranking + 3;
-    config.challenge.game.width = preferences.get("new-game-board-size");
-    config.challenge.game.height = preferences.get("new-game-board-size");
-    return openModal(<ChallengeModal config={config} mode={"open"} autoCreate={true} />);
-}
-export function createCorrespondence() {
-    const user = data.get("user");
-    const config = dup(correspondence_config);
-    config.challenge.min_ranking = user.ranking - 3;
-    config.challenge.max_ranking = user.ranking + 3;
-    config.challenge.game.width = preferences.get("new-game-board-size");
-    config.challenge.game.height = preferences.get("new-game-board-size");
-    return openModal(<ChallengeModal config={config} mode={"open"} autoCreate={true} />);
-}
-
 export function challenge_text_description(challenge) {
     const c = challenge;
     const g = "game" in challenge ? challenge.game : challenge;
@@ -1971,7 +1970,7 @@ export function challenge_text_description(challenge) {
     return details_html;
 }
 
-export function isStandardBoardSize(board_size: string): boolean {
+function isStandardBoardSize(board_size: string): boolean {
     return board_size in standard_board_sizes;
 }
 
@@ -2005,25 +2004,6 @@ interface ChallengeModalConfig {
     time_control: TimeControlConfig;
 }
 
-interface ChallengeConfig {
-    challenger_color: rest_api.ColorSelectionOptions;
-    game: {
-        name: string;
-        rules: RuleSet;
-        ranked: boolean;
-        handicap: number;
-        komi_auto: string;
-        disable_analysis: boolean;
-        initial_state: any;
-        private: boolean;
-        width?: number;
-        height?: number;
-    };
-    min_ranking?: number;
-    max_ranking?: number;
-    invite_only: boolean;
-}
-
 interface TimeControlConfig {
     system: JGOFTimeControlSystem;
     speed: JGOFTimeControlSpeed;
@@ -2035,90 +2015,91 @@ interface TimeControlConfig {
     periods?: number;
     pause_on_weekends: boolean;
 }
-interface GameConfig {
-    conf: { restrict_rank: boolean };
-    challenge: ChallengeConfig;
-    time_control: TimeControlConfig;
-}
 
-export const blitz_config: GameConfig = {
-    conf: {
-        restrict_rank: true,
-    },
-    challenge: {
-        challenger_color: "automatic",
-        invite_only: false,
-        game: {
-            name: "",
-            rules: "japanese",
-            ranked: true,
-            handicap: 0,
-            komi_auto: "automatic",
-            disable_analysis: false,
-            initial_state: null,
-            private: false,
-        },
-    },
-    time_control: {
-        system: "fischer",
-        speed: "blitz",
-        initial_time: 20,
-        time_increment: 10,
-        max_time: 30,
-        pause_on_weekends: false,
-    },
-};
-export const live_config: GameConfig = {
-    conf: {
-        restrict_rank: true,
-    },
-    challenge: {
-        challenger_color: "automatic",
-        invite_only: false,
-        game: {
-            name: "",
-            rules: "japanese",
-            ranked: true,
-            handicap: 0,
-            komi_auto: "automatic",
-            disable_analysis: false,
-            initial_state: null,
-            private: false,
-        },
-    },
-    time_control: {
-        system: "byoyomi",
-        speed: "live",
-        main_time: 10 * 60,
-        period_time: 30,
-        periods: 5,
-        pause_on_weekends: false,
-    },
-};
-export const correspondence_config: GameConfig = {
-    conf: {
-        restrict_rank: true,
-    },
-    challenge: {
-        challenger_color: "automatic",
-        invite_only: false,
-        game: {
-            name: "",
-            rules: "japanese",
-            ranked: true,
-            handicap: 0,
-            komi_auto: "automatic",
-            disable_analysis: false,
-            initial_state: null,
-            private: false,
-        },
-    },
-    time_control: {
-        system: "fischer",
-        speed: "correspondence",
-        initial_time: 3 * 86400,
-        time_increment: 86400,
-        max_time: 7 * 86400,
-        pause_on_weekends: true,
-    },
-};
+/* This function provides translations for rejection reasons coming gtp2ogs bot interface scripts. */
+function rejectionDetailsToMessage(details: RejectionDetails): string | undefined {
+    switch (details.rejection_code) {
+        case "blacklisted":
+            return pgettext(
+                "The user has been blocked by the operator of the bot from playing against the bot.",
+                "The operator of this bot will not let you play against it.",
+            );
+
+        case "board_size_not_square":
+            return _("This bot only plays on square boards");
+
+        case "board_size_not_allowed":
+            return _("The selected board size is not supported by this bot");
+
+        case "handicap_not_allowed":
+            return _("Handicap games are not allowed against this bot");
+
+        case "unranked_not_allowed":
+            return _("Unranked games are not allowed against this bot");
+
+        case "ranked_not_allowed":
+            return _("Ranked games are not allowed against this bot");
+
+        case "blitz_not_allowed":
+            return _("Blitz games are not allowed against this bot");
+
+        case "too_many_blitz_games":
+            return _(
+                "Too many blitz games are being played by this bot right now, please try again later.",
+            );
+
+        case "live_not_allowed":
+            return _("Live games are not allowed against this bot");
+
+        case "too_many_live_games":
+            return _(
+                "Too many live games are being played by this bot right now, please try again later.",
+            );
+
+        case "correspondence_not_allowed":
+            return _("Correspondence games are not allowed against this bot");
+
+        case "too_many_correspondence_games":
+            return _(
+                "Too many correspondence games are being played by this bot right now, please try again later.",
+            );
+
+        case "time_control_system_not_allowed":
+            return _("The provided time control system is not supported by this bot");
+
+        case "time_increment_out_of_range":
+            return _("The time increment is out of the acceptable range allowed by this bot");
+
+        case "period_time_out_of_range":
+            return _("The period time is out of the acceptable range allowed by this bot");
+
+        case "periods_out_of_range":
+            return _("The number of periods is out of the acceptable range allowed by this bot");
+
+        case "main_time_out_of_range":
+            return _("The main time is out of the acceptable range allowed by this bot");
+
+        case "max_time_out_of_range":
+            return _("The max time is out of the acceptable range allowed by this bot");
+
+        case "per_move_time_out_of_range":
+            return _("The per move time is out the acceptable range allowed by this bot");
+
+        case "player_rank_out_of_range":
+            return _("Your rank is too high or low to play against this bot");
+
+        case "not_accepting_new_challenges":
+            return _("This bot is not accepting new games at this time");
+
+        case "too_many_games_for_player":
+            return _(
+                "You are already playing against this bot, please end your other game before starting a new one",
+            );
+
+        case "komi_out_of_range":
+            return _("Komi is out of the acceptable range allowed by this bot");
+
+        default:
+            return undefined;
+    }
+}

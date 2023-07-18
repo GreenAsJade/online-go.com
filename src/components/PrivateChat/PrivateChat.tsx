@@ -29,6 +29,7 @@ import { PlayerCacheEntry } from "player_cache";
 import * as player_cache from "player_cache";
 import online_status from "online_status";
 import { openReport } from "Report";
+import { alert } from "swal_config";
 
 let last_id = 0;
 
@@ -69,42 +70,56 @@ class PrivateChat {
 
     constructor(user_id, username) {
         this.user_id = user_id;
-        socket.send("chat/pm/load", user_id);
+        socket.send("chat/pm/load", { player_id: user_id });
 
         this.player_dom = $("<span class='user Player nolink'>...</span>");
-        if (username) {
-            this.player_dom.text(unicodeFilter(username));
-            this.player.username = username;
-        }
 
-        online_status.subscribe(user_id, (_, tf) => {
-            if (tf) {
-                this.player_dom.removeClass("offline").addClass("online");
-            } else {
-                this.player_dom.addClass("offline").removeClass("online");
-            }
-        });
+        if (user_id) {
+            online_status.subscribe(user_id, (_, tf) => {
+                if (tf) {
+                    this.player_dom.removeClass("offline").addClass("online");
+                } else {
+                    this.player_dom.addClass("offline").removeClass("online");
+                }
+            });
+        }
 
         this.player = {
             id: user_id,
             username: "...",
             ui_class: "",
         };
-        player_cache
-            .fetch(this.user_id, ["username", "ui_class"])
-            .then((player) => {
-                this.player = player;
-                this.player_dom.text(unicodeFilter(player.username));
-                this.player_dom.addClass(player.ui_class);
-                this.updateInputPlaceholder();
-                if (this.banner) {
-                    this.updateModeratorBanner();
-                }
-            })
-            .catch((err) => {
-                console.error(err);
-                this.player_dom.text("[error]");
-            });
+
+        if (username) {
+            this.player_dom.text(unicodeFilter(username));
+            this.player.username = username;
+        }
+
+        if (this.user_id) {
+            player_cache
+                .fetch(this.user_id, ["username", "ui_class"])
+                .then((player) => {
+                    this.player = player;
+                    this.player_dom.text(unicodeFilter(player.username));
+                    this.player_dom.addClass(player.ui_class);
+                    if (player.ui_class.match(/moderator/)) {
+                        // inter mod chat? don't open
+                        if (!data.get("user").is_moderator) {
+                            this.open();
+                        }
+                    }
+                    this.updateInputPlaceholder();
+                    if (this.banner) {
+                        this.updateModeratorBanner();
+                    }
+                })
+                .catch((err) => {
+                    console.error(err);
+                    this.player_dom.text("[error]");
+                });
+        } else {
+            this.player_dom.text("system");
+        }
     }
 
     open(send_itc?) {
@@ -120,6 +135,10 @@ class PrivateChat {
         this.dom.append($("<div class='paper-shadow top z2'>"));
         this.dom.append($("<div class='paper-shadow bottom z2'>"));
 
+        if (!this.user_id) {
+            this.dom.addClass("system");
+        }
+
         const title = $("<div>").addClass("title").append(this.player_dom);
         if (data.get("user").is_moderator) {
             const superchat = $("<i>")
@@ -133,7 +152,6 @@ class PrivateChat {
                         socket.send("chat/pm/superchat", {
                             player_id: this.user_id,
                             username: this.player.username,
-                            auth: data.get("config.superchat_auth"),
                             enable: true,
                         });
                     } else {
@@ -142,7 +160,6 @@ class PrivateChat {
                         socket.send("chat/pm/superchat", {
                             player_id: this.user_id,
                             username: this.player.username,
-                            auth: data.get("config.superchat_auth"),
                             enable: false,
                         });
                     }
@@ -160,36 +177,40 @@ class PrivateChat {
                     }),
             );
         } else {
-            title.append(
-                $("<i>")
-                    .addClass("fa fa-exclamation-triangle")
-                    .click(() => {
-                        this.report();
-                    }),
-            );
+            if (this.user_id) {
+                title.append(
+                    $("<i>")
+                        .addClass("fa fa-exclamation-triangle")
+                        .click(() => {
+                            this.report();
+                        }),
+                );
 
+                title.append(
+                    $("<i>")
+                        .addClass("ogs-goban")
+                        .click(() => {
+                            challenge(this.user_id);
+                        }),
+                );
+            }
+        }
+
+        if (this.user_id) {
             title.append(
                 $("<i>")
-                    .addClass("ogs-goban")
+                    .addClass("fa fa-info-circle")
                     .click(() => {
-                        challenge(this.user_id);
+                        window.open(
+                            "/user/view/" +
+                                this.user_id +
+                                "/" +
+                                encodeURIComponent(unicodeFilter(this.player.username)),
+                            "_blank",
+                        );
                     }),
             );
         }
-
-        title.append(
-            $("<i>")
-                .addClass("fa fa-info-circle")
-                .click(() => {
-                    window.open(
-                        "/user/view/" +
-                            this.user_id +
-                            "/" +
-                            encodeURIComponent(unicodeFilter(this.player.username)),
-                        "_blank",
-                    );
-                }),
-        );
         title.append(
             $("<i>")
                 .addClass("fa fa-minus")
@@ -363,14 +384,18 @@ class PrivateChat {
             );
             this.input.attr("disabled", "disabled");
         } else {
-            this.input.attr(
-                "placeholder",
-                pgettext(
-                    "This is the placeholder text for the chat input field in games, chat channels, and private messages",
-                    interpolate("Message {{who}}", { who: this.player.username }),
-                ),
-            );
-            this.input.removeAttr("disabled");
+            if (this.user_id) {
+                this.input.attr(
+                    "placeholder",
+                    pgettext(
+                        "This is the placeholder text for the chat input field in games, chat channels, and private messages",
+                        interpolate("Message {{who}}", { who: this.player.username }),
+                    ),
+                );
+                this.input.removeAttr("disabled");
+            } else {
+                this.input.attr("disabled", "disabled");
+            }
         }
     }
 
@@ -464,7 +489,7 @@ class PrivateChat {
             data.set(`pm.close-${this.user_id}`, this.last_uid);
         }
         if (socket && !dont_send_pm_close) {
-            socket.send("chat/pm/close", this.user_id);
+            socket.send("chat/pm/close", { player_id: this.user_id });
         }
     }
     addChat(from, txt, user_id, timestamp) {
@@ -573,6 +598,17 @@ class PrivateChat {
         }
     }
     handleChat(line) {
+        if (!this.user_id) {
+            // system message
+            this.open();
+        }
+        if (this.player.ui_class.match(/moderator/)) {
+            // Open the chat window if a moderator is messaging (unless we are a moderator ourselves)
+            if (!data.get("user").is_moderator) {
+                this.open();
+            }
+        }
+
         if (line.message.i) {
             if (
                 line.message.i + " " + line.message.t + " " + line.from.username in
@@ -620,7 +656,12 @@ class PrivateChat {
             this.removeHilight();
         }
     }
-    sendChat(msg) {
+    sendChat(msg, as_system?: true) {
+        if (data.get("appeals.banned_user_id")) {
+            void alert.fire(_("Your account is suspended - you cannot send messages."));
+            return;
+        }
+
         while (msg.length) {
             const arr = splitOnBytes(msg, 500);
             const line = arr[0];
@@ -634,16 +675,19 @@ class PrivateChat {
                     username: this.player.username,
                     uid: this.chatbase + "." + (++this.chatnum).toString(36),
                     message: line,
+                    as_system,
                 },
                 (line) => {
-                    /* we're gonna get these echoed back to us in various cases */
-                    this.received_messages[
-                        line.message.i + " " + line.message.t + " " + line.from.username
-                    ] = true;
+                    if (line) {
+                        /* we're gonna get these echoed back to us in various cases */
+                        this.received_messages[
+                            line.message.i + " " + line.message.t + " " + line.from.username
+                        ] = true;
+                    }
                 },
             );
         }
-        this.input.val("");
+        this.input?.val("");
     }
 
     startFloating() {
@@ -717,7 +761,7 @@ function update_chat_layout() {
     }
 }
 
-export function getPrivateChat(user_id, username?) {
+export function getPrivateChat(user_id, username?): PrivateChat {
     if (user_id in instances) {
         return instances[user_id];
     }
@@ -756,7 +800,7 @@ socket.on("private-superchat", (config) => {
                 pc.addSystem({
                     message:
                         config.moderator_username +
-                        " just tried to superchat you, but being a super user we decided to ignore that shit.",
+                        " just tried to superchat you, but being a super user we decided to ignore it.",
                 });
             }
         }
@@ -772,7 +816,7 @@ socket.on("private-superchat", (config) => {
 ITC.register("private-chat-close", (data) => {
     const pc = getPrivateChat(data.user_id);
     if (pc.display_state === "minimized") {
-        pc.close();
+        pc.close(false);
     }
 });
 function chat_markup(body) {

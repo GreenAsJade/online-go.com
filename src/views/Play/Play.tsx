@@ -98,9 +98,15 @@ export class Play extends React.Component<{}, PlayState> {
     constructor(props) {
         super(props);
 
+        const user = data.get("user");
+
         const filter = {};
         Play.filterPreferenceMapping.forEach((pref, key) => {
-            filter[key] = preferences.get(pref);
+            if (user.anonymous) {
+                filter[key] = true;
+            } else {
+                filter[key] = preferences.get(pref);
+            }
         });
 
         this.state = {
@@ -240,6 +246,11 @@ export class Play extends React.Component<{}, PlayState> {
     };
 
     acceptOpenChallenge = (challenge: Challenge) => {
+        if (data.get("user").anonymous) {
+            void alert.fire(_("Please sign in first"));
+            return;
+        }
+
         openGameAcceptModal(challenge)
             .then((challenge) => {
                 browserHistory.push(`/game/${challenge.game_id}`);
@@ -289,6 +300,11 @@ export class Play extends React.Component<{}, PlayState> {
     };
 
     findMatch = (speed: "blitz" | "live" | "correspondence") => {
+        if (data.get("user").anonymous) {
+            void alert.fire(_("Please sign in first"));
+            return;
+        }
+
         const settings = getAutomatchSettings(speed);
         const preferences: AutomatchPreferences = {
             uuid: uuid(),
@@ -617,6 +633,8 @@ export class Play extends React.Component<{}, PlayState> {
         const rengo_challenge_to_show = own_live_rengo_challenge || joined_live_rengo_challenge;
 
         const user = data.get("user");
+        const anon = user.anonymous;
+        const warned = user.has_active_warning_flag;
 
         //  Construction of the pane we need to show...
         if (automatch_manager.active_live_automatcher) {
@@ -711,7 +729,7 @@ export class Play extends React.Component<{}, PlayState> {
             return (
                 <div className="automatch-container">
                     <div className="automatch-header">
-                        <div>{_("Quick match finder")}</div>
+                        <div>{_("Automatch finder")}</div>
                         <div className="btn-group">
                             <button
                                 className={size_enabled("9x9") ? "primary sm" : "sm"}
@@ -744,7 +762,11 @@ export class Play extends React.Component<{}, PlayState> {
                     </div>
                     <div className="automatch-row-container">
                         <div className="automatch-row">
-                            <button className="primary" onClick={() => this.findMatch("blitz")}>
+                            <button
+                                className="primary"
+                                onClick={() => this.findMatch("blitz")}
+                                disabled={anon || warned}
+                            >
                                 <div className="play-button-text-root">
                                     <i className="fa fa-bolt" /> {_("Blitz")}
                                     <span className="time-per-move">
@@ -755,7 +777,11 @@ export class Play extends React.Component<{}, PlayState> {
                                     </span>
                                 </div>
                             </button>
-                            <button className="primary" onClick={() => this.findMatch("live")}>
+                            <button
+                                className="primary"
+                                onClick={() => this.findMatch("live")}
+                                disabled={anon || warned}
+                            >
                                 <div className="play-button-text-root">
                                     <i className="fa fa-clock-o" /> {_("Normal")}
                                     <span className="time-per-move">
@@ -768,7 +794,11 @@ export class Play extends React.Component<{}, PlayState> {
                             </button>
                         </div>
                         <div className="automatch-row">
-                            <button className="primary" onClick={this.newComputerGame}>
+                            <button
+                                className="primary"
+                                onClick={this.newComputerGame}
+                                disabled={anon || warned}
+                            >
                                 <div className="play-button-text-root">
                                     <i className="fa fa-desktop" /> {_("Computer")}
                                     <span className="time-per-move"></span>
@@ -777,6 +807,7 @@ export class Play extends React.Component<{}, PlayState> {
                             <button
                                 className="primary"
                                 onClick={() => this.findMatch("correspondence")}
+                                disabled={anon || warned}
                             >
                                 <div className="play-button-text-root">
                                     <span>
@@ -795,7 +826,11 @@ export class Play extends React.Component<{}, PlayState> {
                             <div>{_("Custom Game")}</div>
                         </div>
                         <div className="custom-game-row">
-                            <button className="primary" onClick={this.newCustomGame}>
+                            <button
+                                className="primary"
+                                onClick={this.newCustomGame}
+                                disabled={anon || warned}
+                            >
                                 <i className="fa fa-cog" /> {_("Create")}
                             </button>
                         </div>
@@ -1129,6 +1164,12 @@ export class Play extends React.Component<{}, PlayState> {
         }
     };
 
+    startOwnRengoChallenge = (challenge: Challenge): Promise<void> => {
+        // stop the person from pressing "Start" twice impatiently, while we get around to removing this challenge
+        this.closeChallengeManagementPane(challenge.challenge_id);
+        return rengo_utils.startOwnRengoChallenge(challenge);
+    };
+
     rengoManageListItem = (props: { C: Challenge; user: any }) => {
         const { C, user } = { ...props };
         return (
@@ -1151,7 +1192,7 @@ export class Play extends React.Component<{}, PlayState> {
                             user={user}
                             challenge_id={C.challenge_id}
                             rengo_challenge_list={this.state.rengo_list}
-                            startRengoChallenge={rengo_utils.startOwnRengoChallenge}
+                            startRengoChallenge={this.startOwnRengoChallenge}
                             cancelChallenge={this.cancelOpenChallenge}
                             withdrawFromRengoChallenge={this.unNominateForRengoChallenge}
                             joinRengoChallenge={rengo_utils.nominateForRengoChallenge}
