@@ -16,7 +16,7 @@
  */
 
 import * as React from "react";
-import PivotTableUI from "react-pivottable/PivotTableUI";
+import { LazyReactPivotTableUI } from "LazyReactPivotTable";
 
 import { get } from "requests";
 
@@ -63,7 +63,11 @@ export function ModerationStats(): JSX.Element {
                     {`${days} days`}
                 </span>
             </PreferenceLine>
-            <PivotTableUI data={data} onChange={(s) => setTableState(s)} {...table_state} />
+            <LazyReactPivotTableUI
+                data={data}
+                onChange={(s) => setTableState(s)}
+                {...table_state}
+            />
         </div>
     );
 }
