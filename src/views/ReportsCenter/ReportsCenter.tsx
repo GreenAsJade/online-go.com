@@ -25,6 +25,7 @@ import { _ } from "translate";
 import { ViewReport } from "./ViewReport";
 import { ReportsCenterSettings } from "./ReportsCenterSettings";
 import { ReportsCenterHistory } from "./ReportsCenterHistory";
+import { ModerationStats } from "./ModerationStats";
 
 interface OtherView {
     special: string;
@@ -50,6 +51,7 @@ const categories: (ReportDescription | OtherView)[] = [
         { special: "hr", title: "" },
         { special: "history", title: "History" },
         { special: "settings", title: "Settings" },
+        { special: "stats", title: "Stats" },
     ]);
 const category_priorities: { [type: string]: number } = {};
 for (let i = 0; i < report_categories.length; ++i) {
@@ -166,6 +168,7 @@ export function ReportsCenter(): JSX.Element {
                                     return <hr key={idx} />;
                                 case "settings":
                                 case "history":
+                                case "stats":
                                     return (
                                         <div
                                             key={report_type.special}
@@ -235,6 +238,8 @@ export function ReportsCenter(): JSX.Element {
                     <ReportsCenterSettings />
                 ) : category === "history" ? (
                     <ReportsCenterHistory />
+                ) : category === "stats" ? (
+                    <ModerationStats />
                 ) : category === "hr" ? null : (
                     <ViewReport
                         reports={
