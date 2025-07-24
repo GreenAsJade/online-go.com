@@ -1591,7 +1591,7 @@ function sanityCheck(ai_review: JGOFAIReview) {
 export function ReviewStrengthIcon({
     review,
 }: {
-    review: (JGOFAIReview | rest_api.AIReviewParams) & { cheat_detection?: boolean };
+    review: JGOFAIReview | rest_api.AIReviewParams;
 }): React.ReactElement {
     let strength: string;
     let content = "";
@@ -1636,7 +1636,7 @@ export function ReviewStrengthIcon({
         }
     }
 
-    if (review.cheat_detection) {
+    if ("cheat_detection" in review && review.cheat_detection) {
         strength = "ai-cheat-detection-review";
         if (review.strength >= 500) {
             strength += " ai-cheat-detection-review-plus";

@@ -232,6 +232,7 @@ declare namespace rest_api {
         type: "fast" | "full";
         playouts: number;
         visits: number;
+        cheat_detection?: boolean;
     }
 
     interface BotDetectionResults {
