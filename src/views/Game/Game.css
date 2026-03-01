@@ -23,18 +23,6 @@
     right: 0;
     left: 0;
 
-    .hidden, .hidden.active, .hidden:focus, .hidden:hover {
-        background-color: var(--hidden-bg);
-    }
-
-    .malkovich, .malkovich.active, .malkovich:focus, .malkovich:hover {
-        background-color: var(--malkovich-bg);
-    }
-
-    .personal, .personal.active, .personal:focus, .personal:hover {
-        background-color: var(--personal-bg);
-    }
-
     .submit-button {
         white-space: nowrap;
     }
